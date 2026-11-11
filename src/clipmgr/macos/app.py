@@ -265,9 +265,10 @@ class AppDelegate(NSObject):
             "using. macOS needs the Accessibility permission for that.\n\n"
             f"The {self.config.hotkey.display} shortcut itself needs no permission, "
             "and clipmgr does not need Input Monitoring.\n\n"
-            "When clipmgr runs from a terminal, macOS lists the terminal app "
-            "(Terminal, iTerm, VS Code…) in Privacy & Security → Accessibility; turn "
-            "that one on, then restart clipmgr.\n\n"
+            "In Privacy & Security → Accessibility, macOS lists whichever app started "
+            "clipmgr: your terminal app (Terminal, iTerm, VS Code…) if you ran it from "
+            "a terminal, or \"Python\" if it started at login. Turn that one on. If "
+            "pasting still doesn't work, restart clipmgr.\n\n"
             "Without it, picking an item still copies it, and you press ⌘V yourself.",
             ["Open Accessibility Settings", "Not Now"],
         )

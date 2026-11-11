@@ -1,7 +1,14 @@
 # clipmgr
 
 A small macOS clipboard history manager. Keep using ⌘C / ⌘V as usual. When you
-need something you copied earlier, press **⌃⌘V** and pick it from a list.
+need something you copied earlier, press **⌃⌘V** in any app and pick it from a list.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+    <img src="docs/screenshot-light.png" width="560" alt="The clipmgr popup: two pinned items labeled a and b above ten recent copies numbered 1 to 0, with Clear history and Clear everything buttons">
+  </picture>
+</p>
 
 - Text only. The last **10** copies, plus any number of **pinned** items.
 - Lives in the menu bar (no Dock icon).
@@ -9,31 +16,73 @@ need something you copied earlier, press **⌃⌘V** and pick it from a list.
 - Copies that password managers mark as concealed or transient
   (`org.nspasteboard.ConcealedType` / `TransientType`) are never recorded.
 
-## Run
+## Setup (one time)
 
-Requires macOS and [uv](https://docs.astral.sh/uv/).
+You need macOS and [uv](https://docs.astral.sh/uv/) (`brew install uv`).
+
+### 1. Install
+
+Put the project somewhere outside Desktop, Documents and Downloads. macOS
+restricts those folders for apps that start at login.
 
 ```sh
-uv run python -m clipmgr     # or: uv run clipmgr
+git clone https://github.com/pransil/clipboard-tool.git ~/devel/clipboard-tool
+cd ~/devel/clipboard-tool
+uv sync
 ```
 
-Quit from the menu bar icon (**Quit clipmgr**) or with Ctrl+C in the terminal.
+### 2. Start it at login
 
-### Permissions
+```sh
+scripts/login-item.sh install
+```
 
-| What | Permission | Why |
-|---|---|---|
-| ⌃⌘V hotkey | none | Uses Carbon `RegisterEventHotKey`, which needs no permission |
-| Watching the clipboard | none | |
-| Pasting into the app you were using | **Accessibility** | clipmgr sends ⌘V for you |
+This starts clipmgr now and every time you log in or restart the Mac. A clipboard icon
+appears in the menu bar. macOS may show a "Background Items Added" notification;
+that's expected. The script installs a per-user LaunchAgent
+(`~/Library/LaunchAgents/local.clipmgr.plist`). It relaunches clipmgr if it
+crashes, but not after you choose **Quit**.
 
-On first launch clipmgr explains this and offers to open
-**System Settings → Privacy & Security → Accessibility**. When you run it from a
-terminal, macOS lists the *terminal app* (Terminal, iTerm, VS Code…). Turn that
-one on, then restart clipmgr. Input Monitoring is not needed.
+<details>
+<summary>Prefer to run it by hand instead?</summary>
 
-Without Accessibility, picking an item still copies it, and the menu bar
-shows "Copied — press ⌘V".
+```sh
+uv run python -m clipmgr     # Ctrl+C or menu bar → Quit to stop
+```
+
+Started this way, it runs until you quit it or log out. In step 3, macOS lists
+your **terminal app** (Terminal, iTerm, VS Code…) instead of "Python".
+</details>
+
+### 3. Allow it to paste into other apps (Accessibility)
+
+The shortcut and the history work right away with no permissions. To paste the item
+you pick into the app you were using, clipmgr sends ⌘V for you, and macOS requires
+the **Accessibility** permission for that.
+
+1. On first start, clipmgr shows a dialog. Click **Open Accessibility Settings**.
+   You can also go to **System Settings → Privacy & Security → Accessibility**.
+2. Turn on **Python**. If you started clipmgr from a terminal, turn on your terminal app instead.
+   Usually macOS adds the entry when clipmgr asks. If Python isn't listed, click **+**,
+   press ⌘⇧G, and paste the path from the "Accessibility app" line of
+   `scripts/login-item.sh status`.
+3. Run `scripts/login-item.sh restart`.
+
+Until you do this, picking an item still copies it, and the menu bar shows
+"Copied — press ⌘V".
+
+clipmgr does **not** need Input Monitoring or Screen Recording.
+
+### 4. Check it works everywhere
+
+The shortcut is system-wide, so it doesn't matter which app, window or browser tab is in front.
+Check a few places:
+
+- [ ] **TextEdit:** press ⌃⌘V, then `1`. Your last copy is pasted.
+- [ ] **A browser tab** (a search box, a Google Doc, a Gmail draft): same test.
+- [ ] **A full-screen app**, and **another desktop (Space)**: the popup appears on top.
+- [ ] **A second display**, if you have one: the popup opens on the display with the mouse pointer.
+- [ ] **After a restart:** the menu bar icon is back without running anything.
 
 ## Use
 
@@ -54,7 +103,8 @@ Press **⌃⌘V** (or click the menu bar icon → Show Clipboard History).
   Both are in the popup and the menu bar menu.
 - Picking an item moves it to the top of the recent list. Pinned items keep their place.
 - Copying something already in the list moves it to the top instead of adding a duplicate.
-- Pinned items don't count toward the 10-item limit and stay until you unpin or delete them.
+- Pinned items don't count toward the 10-item limit. They stay until you unpin or delete them,
+  or quit clipmgr.
 
 ## Configure
 
@@ -67,7 +117,21 @@ poll_interval = 0.25    # seconds between clipboard checks (0.05–2.0)
 
 Modifiers: `cmd`, `ctrl`, `option`/`alt`, `shift`. A hotkey must include `cmd` or `ctrl`
 (F-keys excepted), because macOS rejects option-only shortcuts. This file holds
-settings only, never clipboard contents.
+settings only, never clipboard contents. Run `scripts/login-item.sh restart` after editing it.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Popup opens but nothing is pasted | Accessibility is off for the entry that started clipmgr ("Python" at login, or your terminal app). Turn it on, then `scripts/login-item.sh restart`. |
+| Auto-paste stopped after `brew upgrade` | Homebrew installed a new Python build, and macOS treats it as a new app. In Accessibility, remove the old **Python** entry (−), then `scripts/login-item.sh restart` and allow it again. |
+| ⌃⌘V does nothing | Check for the menu bar icon. If it's missing, run `scripts/login-item.sh status`. If clipmgr showed "Couldn't register the shortcut", another app owns ⌃⌘V; pick a different `hotkey` in the config file. |
+| ⌃⌘V doesn't work in one particular app | That app may use ⌃⌘V itself, or it may have turned on secure keyboard entry (password fields, Terminal → Secure Keyboard Entry), which can block shortcuts and synthesized keys. |
+| Two clipboard icons in the menu bar | One copy started at login and another from a terminal. Quit the terminal one. |
+| Not starting at login | In **System Settings → General → Login Items & Extensions**, under *Allow in the Background*, make sure the Python entry (it may be listed as `python3.14`) is on. Then run `scripts/login-item.sh install` again. If you moved the project folder, reinstall too. |
+| Logs | `~/Library/Logs/clipmgr.log` (start/stop and errors only, never clipboard contents) |
+
+To stop starting at login: `scripts/login-item.sh uninstall`.
 
 ## Develop
 
@@ -76,7 +140,8 @@ src/clipmgr/
   history.py    filtering.py    watcher.py    config.py    display.py   # pure Python, unit-tested
   macos/        pasteboard.py   hotkey.py     paste.py     popup.py     app.py
 tests/          unit tests for the pure modules (run anywhere)
-scripts/        copy_sensitive.py: manual test helper
+scripts/        login-item.sh, copy_sensitive.py (manual test helper),
+                render_screenshots.py (regenerates docs/screenshot-*.png)
 ```
 
 ```sh
@@ -103,10 +168,11 @@ uv run pytest
 - Plain text only (no images, files, RTF/HTML). No sync, no persistence.
 - Auto-paste sends the physical V key (ANSI key code 9). Non-QWERTY layouts such as Dvorak
   may paste the wrong shortcut.
-- Running from a terminal ties the Accessibility permission to that terminal app.
+- macOS shows the app as "Python" (or your terminal app) in Settings, not as "clipmgr".
 
 ## Phase 2 ideas
 
 - Credential queue: copy a username and password, then paste them in order. Both are held
   in memory only and cleared after use or after 30–60 s. Never pinned, never in history.
-- A `.app` bundle (py2app) with its own permission entry and an optional login item.
+- A real `.app` bundle (py2app) so clipmgr has its own name and icon in the Accessibility and
+  Login Items lists.
