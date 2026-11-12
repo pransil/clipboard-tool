@@ -1,4 +1,4 @@
-from clipmgr.filtering import CONCEALED_TYPE, TRANSIENT_TYPE
+from clipmgr.filtering import CONCEALED_TYPE, TRANSIENT_TYPE, is_sensitive
 from clipmgr.history import History
 from clipmgr.watcher import ClipboardWatcher, Snapshot
 
@@ -21,8 +21,11 @@ class FakePasteboard:
     def read_change_count(self):
         return self.change_count
 
-    def read_snapshot(self):
+    def read_snapshot(self, include_sensitive=False):
+        # Same contract as the real adapter: sensitive text is only read on request.
         self.snapshot_reads += 1
+        if is_sensitive(self.snapshot.types) and not include_sensitive:
+            return Snapshot(self.snapshot.types, None)
         return self.snapshot
 
 
@@ -113,3 +116,55 @@ def test_many_copies_between_polls_records_latest():
     pb.copy("C")
     watcher.poll()
     assert recent_texts(history) == ["C"]
+
+
+# ----- capture mode (login helper) ------------------------------------------
+
+
+def test_capture_receives_copies_instead_of_history():
+    pb, history, watcher = make()
+    captured = []
+    watcher.capture = captured.append
+    pb.copy("alex@example.com")
+    assert watcher.poll() is False  # history did not change
+    assert captured == ["alex@example.com"]
+    assert recent_texts(history) == []
+
+
+def test_capture_accepts_concealed_copies():
+    pb, history, watcher = make()
+    captured = []
+    watcher.capture = captured.append
+    pb.copy("hunter2", CONCEALED_TYPE)
+    watcher.poll()
+    pb.copy("otp", TRANSIENT_TYPE)
+    watcher.poll()
+    assert captured == ["hunter2", "otp"]
+    assert recent_texts(history) == []
+
+
+def test_capture_skips_own_writes():
+    pb, history, watcher = make()
+    captured = []
+    watcher.capture = captured.append
+    watcher.ignore(pb.copy("restored by app"))
+    watcher.poll()
+    assert captured == []
+
+
+def test_history_resumes_after_capture_ends():
+    pb, history, watcher = make()
+    watcher.capture = lambda text: None
+    pb.copy("secret")
+    watcher.poll()
+    watcher.capture = None
+    pb.copy("normal")
+    watcher.poll()
+    assert recent_texts(history) == ["normal"]
+
+
+def test_sensitive_text_not_read_outside_capture():
+    pb, history, watcher = make()
+    pb.copy("hunter2", CONCEALED_TYPE)
+    watcher.poll()
+    assert recent_texts(history) == []

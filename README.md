@@ -15,6 +15,8 @@ need something you copied earlier, press **⌥⌘V** in any app and pick it from
 - History is kept **in memory only**. Nothing is written to disk, and quitting clears it.
 - Copies that password managers mark as concealed or transient
   (`org.nspasteboard.ConcealedType` / `TransientType`) are never recorded.
+- A **login helper** (**⌃⌘L**) pastes a username and then a password into a login form,
+  then forgets both.
 
 ## Setup (one time)
 
@@ -108,13 +110,56 @@ Press **⌥⌘V** (or click the menu bar icon → Show Clipboard History).
 - Pinned items don't count toward the 10-item limit. They stay until you unpin or delete them,
   or quit clipmgr.
 
+## Log in with the login helper
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/login-dark.png">
+    <img src="docs/login-light.png" width="320" alt="The login helper panel: Username shown as al followed by dots and marked as next for Control-Command-L, Password shown as dots, with Swap and Clear buttons and a 1:00 countdown">
+  </picture>
+</p>
+
+Use it when the username and password are somewhere else, such as a password manager, a note
+or an email, and you'd otherwise switch back and forth to copy each one.
+
+1. Press **⌃⌘L**. A small panel appears at the top right of the screen.
+2. Copy the **username**, then the **password**, from wherever they are. The panel ticks each
+   one off. These copies don't go into your history, and right after each one clipmgr puts
+   your clipboard back to what it was before.
+3. Click the login form's username field and press **⌃⌘L**. Press Tab (or *Next* on two-page
+   logins), then press **⌃⌘L** again for the password. You can also click **Username** or
+   **Password** in the panel. Clicking pastes without moving your cursor out of the form.
+
+After the password is pasted, clipmgr wipes both values and closes the panel.
+
+| If you… | Do this |
+|---|---|
+| copied them in the wrong order | **⇅ Swap** |
+| changed your mind | **Cancel** / **Clear**, or press ⌃⌘L while it's still waiting for copies, or use menu bar → Cancel Login |
+| walked away | Nothing. The values are wiped after 60 seconds without activity (see the countdown). |
+
+How it keeps them safe:
+
+- The values are held **in memory only**. They're never in the history or pins, and never on
+  disk or in the log. Python can't guarantee the memory is overwritten, but clipmgr drops the
+  values as soon as you're done.
+- The password is never shown, not even its length. Only the first two characters of the
+  username are shown.
+- For the paste, each value sits on the clipboard for about a second. It's marked as concealed
+  so other clipboard tools skip it, and kept off Universal Clipboard so it isn't sent to your
+  other Apple devices.
+- Without the Accessibility permission, ⌃⌘L puts the value on the clipboard and the panel
+  says "press ⌘V". Your clipboard is restored 15 seconds later.
+
 ## Configure
 
 Optional: `~/.config/clipmgr/config.toml`
 
 ```toml
-hotkey = "cmd+option+v"   # e.g. "ctrl+cmd+v", "cmd+shift+v", "f13"
-poll_interval = 0.25    # seconds between clipboard checks (0.05–2.0)
+hotkey = "cmd+option+v"      # history popup, e.g. "ctrl+cmd+v", "cmd+shift+v", "f13"
+poll_interval = 0.25         # seconds between clipboard checks (0.05–2.0)
+login_hotkey = "ctrl+cmd+l"  # login helper
+login_timeout = 60           # seconds without activity before login values are wiped (10–300)
 ```
 
 Modifiers: `cmd`, `ctrl`, `option`/`alt`, `shift`. A hotkey must include `cmd` or `ctrl`
@@ -129,6 +174,7 @@ settings only, never clipboard contents. Run `scripts/login-item.sh restart` aft
 | Auto-paste stopped after `brew upgrade` | Homebrew installed a new Python build, and macOS treats it as a new app. In Accessibility, remove the old **Python** entry (−), then `scripts/login-item.sh restart` and allow it again. |
 | ⌥⌘V does nothing | Check for the menu bar icon. If it's missing, run `scripts/login-item.sh status`. If clipmgr showed "Couldn't register the shortcut", another app owns ⌥⌘V; pick a different `hotkey` in the config file. |
 | ⌥⌘V doesn't work in one particular app | That app may use ⌥⌘V itself, or it may have turned on secure keyboard entry (password fields, Terminal → Secure Keyboard Entry), which can block shortcuts and synthesized keys. |
+| ⌃⌘L does nothing while a password field is selected | macOS turns on "secure input" in password fields, which can block shortcuts. Click **Password** in the login panel instead. |
 | Two clipboard icons in the menu bar | One copy started at login and another from a terminal. Quit the terminal one. |
 | Not starting at login | In **System Settings → General → Login Items & Extensions**, under *Allow in the Background*, make sure the Python entry (it may be listed as `python3.14`) is on. Then run `scripts/login-item.sh install` again. If you moved the project folder, reinstall too. |
 | Logs | `~/Library/Logs/clipmgr.log` (start/stop and errors only, never clipboard contents) |
@@ -139,11 +185,11 @@ To stop starting at login: `scripts/login-item.sh uninstall`.
 
 ```text
 src/clipmgr/
-  history.py    filtering.py    watcher.py    config.py    display.py   # pure Python, unit-tested
-  macos/        pasteboard.py   hotkey.py     paste.py     popup.py     app.py
-tests/          unit tests for the pure modules (run anywhere)
-scripts/        login-item.sh, copy_sensitive.py (manual test helper),
-                render_screenshots.py (regenerates docs/screenshot-*.png)
+  history.py  filtering.py  watcher.py  config.py  display.py  login.py   # pure Python, unit-tested
+  macos/      pasteboard.py hotkey.py   paste.py    popup.py    login_hud.py  app.py
+tests/        unit tests for the pure modules (run anywhere)
+scripts/      login-item.sh, copy_sensitive.py (manual test helper),
+              render_screenshots.py (regenerates the images in docs/)
 ```
 
 ```sh
@@ -164,6 +210,15 @@ uv run pytest
 6. Gmail (user-supervised): paste into a draft from the popup. Check the text, **do not send**,
    then discard the draft.
 7. Quit and relaunch. The history is empty.
+8. **Login helper.** Open any login page. Press ⌃⌘L, copy a username from a note, then copy a
+   password from your password manager. Check that the panel ticks off both, and that ⌥⌘V
+   doesn't list them. Click the username field and press ⌃⌘L, then Tab and ⌃⌘L. Both values
+   should be pasted, and the panel should show "Done". In TextEdit, ⌘V should paste what was
+   on your clipboard before you started.
+9. **Password field.** With the password field selected, check whether ⌃⌘L works. If it
+   doesn't, clicking **Password** in the panel must work.
+10. **Login helper edge cases.** ⇅ Swap, Cancel, ⌃⌘L while it's waiting for copies, and
+    letting the countdown run out. Each one should wipe or fix the values as described above.
 
 ## Known limitations (v1)
 
@@ -174,7 +229,5 @@ uv run pytest
 
 ## Phase 2 ideas
 
-- Credential queue: copy a username and password, then paste them in order. Both are held
-  in memory only and cleared after use or after 30–60 s. Never pinned, never in history.
 - A real `.app` bundle (py2app) so clipmgr has its own name and icon in the Accessibility and
   Login Items lists.

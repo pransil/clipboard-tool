@@ -2,8 +2,10 @@
 
 Settings are read from an optional TOML file (``~/.config/clipmgr/config.toml``)::
 
-    hotkey = "cmd+option+v"
+    hotkey = "cmd+option+v"        # open the history popup
     poll_interval = 0.25
+    login_hotkey = "ctrl+cmd+l"    # login helper: start / paste next / cancel
+    login_timeout = 60             # seconds of inactivity before login values are wiped
 
 The file only holds settings. Clipboard history is never written to disk.
 """
@@ -11,11 +13,14 @@ The file only holds settings. Clipboard history is never written to disk.
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_HOTKEY = "cmd+option+v"
 DEFAULT_POLL_INTERVAL = 0.25
+DEFAULT_LOGIN_HOTKEY = "ctrl+cmd+l"
+DEFAULT_LOGIN_TIMEOUT = 60.0
+LOGIN_TIMEOUT_RANGE = (10.0, 300.0)
 CONFIG_PATH = Path.home() / ".config" / "clipmgr" / "config.toml"
 
 # Carbon modifier masks (Events.h)
@@ -72,6 +77,8 @@ class Hotkey:
 class Config:
     hotkey: Hotkey
     poll_interval: float
+    login_hotkey: Hotkey = field(default_factory=lambda: parse_hotkey(DEFAULT_LOGIN_HOTKEY))
+    login_timeout: float = DEFAULT_LOGIN_TIMEOUT
 
 
 def parse_hotkey(spec: str) -> Hotkey:
@@ -114,4 +121,19 @@ def load_config(path: Path | None = None) -> Config:
         raise ConfigError(f"{path}: poll_interval must be a number") from exc
     if not 0.05 <= poll_interval <= 2.0:
         raise ConfigError(f"{path}: poll_interval must be between 0.05 and 2.0")
-    return Config(hotkey=hotkey, poll_interval=poll_interval)
+    login_hotkey = parse_hotkey(str(data.get("login_hotkey", DEFAULT_LOGIN_HOTKEY)))
+    if (login_hotkey.key_code, login_hotkey.modifiers) == (hotkey.key_code, hotkey.modifiers):
+        raise ConfigError(f"{path}: login_hotkey must differ from hotkey")
+    try:
+        login_timeout = float(data.get("login_timeout", DEFAULT_LOGIN_TIMEOUT))
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{path}: login_timeout must be a number") from exc
+    low, high = LOGIN_TIMEOUT_RANGE
+    if not low <= login_timeout <= high:
+        raise ConfigError(f"{path}: login_timeout must be between {low:g} and {high:g} seconds")
+    return Config(
+        hotkey=hotkey,
+        poll_interval=poll_interval,
+        login_hotkey=login_hotkey,
+        login_timeout=login_timeout,
+    )

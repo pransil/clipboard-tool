@@ -14,8 +14,13 @@ from Quartz import (
     CGEventPost,
     CGEventSetFlags,
     CGEventSourceCreate,
+    CGEventSourceFlagsState,
+    kCGEventFlagMaskAlternate,
     kCGEventFlagMaskCommand,
+    kCGEventFlagMaskControl,
+    kCGEventFlagMaskShift,
     kCGEventSourceStateCombinedSessionState,
+    kCGEventSourceStateHIDSystemState,
     kCGHIDEventTap,
 )
 
@@ -41,3 +46,18 @@ def send_cmd_v() -> None:
         event = CGEventCreateKeyboardEvent(source, KEY_V, key_down)
         CGEventSetFlags(event, kCGEventFlagMaskCommand)
         CGEventPost(kCGHIDEventTap, event)
+
+
+_MODIFIER_MASK = (
+    kCGEventFlagMaskControl | kCGEventFlagMaskAlternate
+    | kCGEventFlagMaskShift | kCGEventFlagMaskCommand
+)
+
+
+def modifiers_held() -> bool:
+    """True while ⌃, ⌥, ⇧ or ⌘ is physically held down.
+
+    A shortcut fires while its keys are still down; posting ⌘V before they are
+    released could reach the app as e.g. ⌃⌘V, so callers wait for this first.
+    """
+    return bool(CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState) & _MODIFIER_MASK)

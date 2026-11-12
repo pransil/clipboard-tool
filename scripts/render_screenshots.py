@@ -1,4 +1,7 @@
-"""Render the popup with sample data to docs/screenshot-{light,dark}.png.
+"""Render the popup and the login helper with sample data into docs/.
+
+    docs/screenshot-{light,dark}.png   the history popup
+    docs/login-{light,dark}.png        the login helper, ready to paste
 
     uv run python scripts/render_screenshots.py
 
@@ -21,6 +24,8 @@ from AppKit import (
 )
 
 from clipmgr.history import History
+from clipmgr.login import LoginSession
+from clipmgr.macos.login_hud import LoginHUDController
 from clipmgr.macos.popup import PopupController
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
@@ -51,8 +56,8 @@ def new_rep(width: int, height: int) -> NSBitmapImageRep:
     )
 
 
-def render(popup: PopupController, path: Path) -> None:
-    view = popup.panel.contentView()
+def render(window_owner, path: Path) -> None:
+    view = window_owner.panel.contentView()
     bounds = view.bounds()
     w, h = int(bounds.size.width * SCALE), int(bounds.size.height * SCALE)
 
@@ -91,11 +96,21 @@ def main() -> None:
 
     popup = PopupController.alloc().init().setup(history, lambda _id: None)
     popup.show()
+    session = LoginSession()
+    session.start()
+    session.capture("alex@example.com")
+    session.capture("correct horse battery staple")
+    hud = LoginHUDController.alloc().init().setup(
+        session, "⌃⌘L", on_paste=lambda f: None, on_swap=lambda: None, on_cancel=lambda: None
+    )
+    hud.refresh()
+
     DOCS.mkdir(exist_ok=True)
     for name, appearance in (("light", "NSAppearanceNameAqua"), ("dark", "NSAppearanceNameDarkAqua")):
-        popup.panel.setAppearance_(NSAppearance.appearanceNamed_(appearance))
-        popup.panel.contentView().displayIfNeeded()
-        render(popup, DOCS / f"screenshot-{name}.png")
+        for owner, stem in ((popup, "screenshot"), (hud, "login")):
+            owner.panel.setAppearance_(NSAppearance.appearanceNamed_(appearance))
+            owner.panel.contentView().displayIfNeeded()
+            render(owner, DOCS / f"{stem}-{name}.png")
     popup.close()
 
 

@@ -83,3 +83,32 @@ def test_bad_poll_interval_raises(tmp_path):
 
 def test_ctrl_alone_is_enough():
     assert parse_hotkey("ctrl+v").modifiers == CTRL
+
+
+def test_login_defaults(tmp_path):
+    cfg = load_config(tmp_path / "nope.toml")
+    assert cfg.login_hotkey.display == "⌃⌘L"
+    assert cfg.login_timeout == 60
+
+
+def test_login_overrides(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('login_hotkey = "ctrl+option+cmd+l"\nlogin_timeout = 30\n')
+    cfg = load_config(path)
+    assert cfg.login_hotkey.modifiers == CTRL | OPTION | CMD
+    assert cfg.login_timeout == 30
+
+
+@pytest.mark.parametrize("value", ["5", "1000", '"soon"'])
+def test_bad_login_timeout_raises(tmp_path, value):
+    path = tmp_path / "config.toml"
+    path.write_text(f"login_timeout = {value}\n")
+    with pytest.raises(ConfigError):
+        load_config(path)
+
+
+def test_login_hotkey_must_differ(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('hotkey = "ctrl+cmd+l"\n')
+    with pytest.raises(ConfigError):
+        load_config(path)
