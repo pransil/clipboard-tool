@@ -1,7 +1,7 @@
 # clipmgr
 
 A small macOS clipboard history manager. Keep using ⌘C / ⌘V as usual. When you
-need something you copied earlier, press **⌃⌘V** in any app and pick it from a list.
+need something you copied earlier, press **⌥⌘V** in any app and pick it from a list.
 
 <p align="center">
   <picture>
@@ -78,7 +78,7 @@ clipmgr does **not** need Input Monitoring or Screen Recording.
 The shortcut is system-wide, so it doesn't matter which app, window or browser tab is in front.
 Check a few places:
 
-- [ ] **TextEdit:** press ⌃⌘V, then `1`. Your last copy is pasted.
+- [ ] **TextEdit:** press ⌥⌘V, then `1`. Your last copy is pasted.
 - [ ] **A browser tab** (a search box, a Google Doc, a Gmail draft): same test.
 - [ ] **A full-screen app**, and **another desktop (Space)**: the popup appears on top.
 - [ ] **A second display**, if you have one: the popup opens on the display with the mouse pointer.
@@ -86,7 +86,7 @@ Check a few places:
 
 ## Use
 
-Press **⌃⌘V** (or click the menu bar icon → Show Clipboard History).
+Press **⌥⌘V** (or click the menu bar icon → Show Clipboard History).
 
 | Key | Action |
 |---|---|
@@ -96,13 +96,15 @@ Press **⌃⌘V** (or click the menu bar icon → Show Clipboard History).
 | click | paste that item |
 | ⌘P | pin / unpin the highlighted item |
 | ⌫ | delete the highlighted item |
-| esc, or ⌃⌘V again | close |
+| esc, or ⌥⌘V again | close |
 | right-click | Paste / Pin / Delete menu |
 
 - **Clear history** removes unpinned items. **Clear everything** also removes pins.
   Both are in the popup and the menu bar menu.
 - Picking an item moves it to the top of the recent list. Pinned items keep their place.
 - Copying something already in the list moves it to the top instead of adding a duplicate.
+- ⌥⌘V is also Finder's *Move Item Here* shortcut for files. While clipmgr is running, use
+  Finder's **Edit** menu instead: hold ⌥ and choose **Move Item Here**.
 - Pinned items don't count toward the 10-item limit. They stay until you unpin or delete them,
   or quit clipmgr.
 
@@ -111,7 +113,7 @@ Press **⌃⌘V** (or click the menu bar icon → Show Clipboard History).
 Optional: `~/.config/clipmgr/config.toml`
 
 ```toml
-hotkey = "ctrl+cmd+v"   # e.g. "cmd+shift+v", "ctrl+option+space", "f13"
+hotkey = "cmd+option+v"   # e.g. "ctrl+cmd+v", "cmd+shift+v", "f13"
 poll_interval = 0.25    # seconds between clipboard checks (0.05–2.0)
 ```
 
@@ -125,8 +127,8 @@ settings only, never clipboard contents. Run `scripts/login-item.sh restart` aft
 |---|---|
 | Popup opens but nothing is pasted | Accessibility is off for the entry that started clipmgr ("Python" at login, or your terminal app). Turn it on, then `scripts/login-item.sh restart`. |
 | Auto-paste stopped after `brew upgrade` | Homebrew installed a new Python build, and macOS treats it as a new app. In Accessibility, remove the old **Python** entry (−), then `scripts/login-item.sh restart` and allow it again. |
-| ⌃⌘V does nothing | Check for the menu bar icon. If it's missing, run `scripts/login-item.sh status`. If clipmgr showed "Couldn't register the shortcut", another app owns ⌃⌘V; pick a different `hotkey` in the config file. |
-| ⌃⌘V doesn't work in one particular app | That app may use ⌃⌘V itself, or it may have turned on secure keyboard entry (password fields, Terminal → Secure Keyboard Entry), which can block shortcuts and synthesized keys. |
+| ⌥⌘V does nothing | Check for the menu bar icon. If it's missing, run `scripts/login-item.sh status`. If clipmgr showed "Couldn't register the shortcut", another app owns ⌥⌘V; pick a different `hotkey` in the config file. |
+| ⌥⌘V doesn't work in one particular app | That app may use ⌥⌘V itself, or it may have turned on secure keyboard entry (password fields, Terminal → Secure Keyboard Entry), which can block shortcuts and synthesized keys. |
 | Two clipboard icons in the menu bar | One copy started at login and another from a terminal. Quit the terminal one. |
 | Not starting at login | In **System Settings → General → Login Items & Extensions**, under *Allow in the Background*, make sure the Python entry (it may be listed as `python3.14`) is on. Then run `scripts/login-item.sh install` again. If you moved the project folder, reinstall too. |
 | Logs | `~/Library/Logs/clipmgr.log` (start/stop and errors only, never clipboard contents) |
@@ -150,9 +152,9 @@ uv run pytest
 
 ### Manual test checklist (macOS)
 
-1. Copy 12 distinct lines in TextEdit, then press ⌃⌘V. Expect exactly 10 recent items, numbered 1–0.
+1. Copy 12 distinct lines in TextEdit, then press ⌥⌘V. Expect exactly 10 recent items, numbered 1–0.
    Pin one (⌘P), copy 12 more lines, and check that the pin is still there as `a`.
-2. In TextEdit, press ⌃⌘V then `3`. The third item is pasted at the cursor and shows as `1` next time.
+2. In TextEdit, press ⌥⌘V then `3`. The third item is pasted at the cursor and shows as `1` next time.
    Repeat with ↑↓ + ⏎, with a click, and with a letter for a pinned item.
 3. Check ⌘P (unpin), ⌫ (delete), **Clear history** (pins remain), and **Clear everything** (empty).
 4. Run `uv run python scripts/copy_sensitive.py`, then open the popup. The text must not appear.

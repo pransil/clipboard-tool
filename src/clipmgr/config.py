@@ -2,7 +2,7 @@
 
 Settings are read from an optional TOML file (``~/.config/clipmgr/config.toml``)::
 
-    hotkey = "ctrl+cmd+v"
+    hotkey = "cmd+option+v"
     poll_interval = 0.25
 
 The file only holds settings. Clipboard history is never written to disk.
@@ -14,7 +14,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_HOTKEY = "ctrl+cmd+v"
+DEFAULT_HOTKEY = "cmd+option+v"
 DEFAULT_POLL_INTERVAL = 0.25
 CONFIG_PATH = Path.home() / ".config" / "clipmgr" / "config.toml"
 
@@ -75,7 +75,7 @@ class Config:
 
 
 def parse_hotkey(spec: str) -> Hotkey:
-    """Parse e.g. ``"ctrl+cmd+v"`` into a key code and Carbon modifier mask."""
+    """Parse e.g. ``"cmd+option+v"`` into a key code and Carbon modifier mask."""
     parts = [p.strip().lower() for p in spec.split("+")]
     if not parts or any(not p for p in parts):
         raise ConfigError(f"Invalid hotkey {spec!r}")

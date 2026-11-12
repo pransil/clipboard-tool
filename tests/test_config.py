@@ -6,13 +6,20 @@ from clipmgr.config import (
     DEFAULT_POLL_INTERVAL,
     OPTION,
     SHIFT,
+    DEFAULT_HOTKEY,
     ConfigError,
     load_config,
     parse_hotkey,
 )
 
 
-def test_default_hotkey():
+def test_default_hotkey_is_option_cmd_v():
+    hk = parse_hotkey(DEFAULT_HOTKEY)
+    assert (hk.key_code, hk.modifiers) == (9, CMD | OPTION)
+    assert hk.display == "⌥⌘V"
+
+
+def test_ctrl_cmd_v():
     hk = parse_hotkey("ctrl+cmd+v")
     assert (hk.key_code, hk.modifiers) == (9, 0x1100)
     assert hk.display == "⌃⌘V"
@@ -48,7 +55,7 @@ def test_rejects_unknown_parts(spec):
 
 def test_missing_file_uses_defaults(tmp_path):
     cfg = load_config(tmp_path / "nope.toml")
-    assert cfg.hotkey.display == "⌃⌘V"
+    assert cfg.hotkey.display == "⌥⌘V"
     assert cfg.poll_interval == DEFAULT_POLL_INTERVAL
 
 
